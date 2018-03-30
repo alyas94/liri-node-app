@@ -1,10 +1,21 @@
 require("dotenv").config();
-var fs = require("fs"); //reads and writes files
 var keys = require("./keys.js");
 var Twitter = require("twitter");
-var spotify = require("spotify");
+var Spotify = require("node-spotify-api");
+var request = require("request");
+var fs = require("fs");
 
-var liriCommand = process.argv[2];
+var liriCommand = process.argv[2]; //"my-tweets", "movie-this" etc
+var searchTerm = ""; //holds song/twitter username/movie etc
+
+//put search term together in one string to use in other functions
+for (var i = 3; i < process.argv.length; i++) {
+  if (i > 3 && i < process.argv.length) {
+    searchTerm += " " + process.argv[i];
+  } else {
+    searchTerm += process.argv[i];
+  }
+}
 
 switch (liriCommand) {
   case "my-tweets":
@@ -23,22 +34,26 @@ switch (liriCommand) {
   default:
     console.log(
       "\n" +
+        "Sorry, I couldn't understand that\n \n" +
         "Try typing one of the following commands after 'node liri.js' : " +
         "\n" +
-        "1. my-tweets 'any twitter name' " +
+        "1. my-tweets <twitter username> " +
         "\n" +
-        "2. spotify-this-song 'any song name' " +
+        "2. spotify-this-song <song name> " +
         "\n" +
-        "3. movie-this 'any movie name' " +
+        "3. movie-this <movie name> " +
         "\n" +
-        "4. do-what-it-says." +
-        "\n" +
-        "Be sure to put the movie or song name in quotation marks if it's more than one word."
+        "4. do-what-it-says" +
+        "\n"
     );
 }
 
 function myTweets() {
-  var username = "jesus";
+  if (!searchTerm) {
+    var username = "jesus";
+  } else {
+    var username = searchTerm;
+  }
   params = { screen_name: username };
 
   var client = new Twitter(keys.twitter);
@@ -46,7 +61,7 @@ function myTweets() {
     if (error) throw error;
     if (!error) {
       console.log(
-        "tweets from @" + data[0].user.screen_name + ":\n ------------------"
+        "\nTweets from @" + data[0].user.screen_name + ":\n ------------------"
       );
       for (var i = 0; i < 5; i++) {
         //console.log(response); // Show the full response in the terminal
@@ -57,7 +72,7 @@ function myTweets() {
           data[i].text +
           "\r\n" +
           data[i].created_at +
-          "\n\n";
+          "\n";
         console.log(twitterResults);
       }
     }
@@ -65,17 +80,77 @@ function myTweets() {
 }
 
 function spotifyThisSong() {
-  //display spotify song requested
-  var spotify = new Spotify(keys.spotify);
-  spotify.search({ type: "track", query: "dancing in the moonlight" }, function(
-    err,
-    data
-  ) {
-    if (err) {
-      console.log("Error occurred: " + err);
-      return;
+  var spotifyKeys = keys.spotify; //these vars are only needed here
+  var spotify = new Spotify(spotifyKeys);
+
+  song = searchTerm;
+  if (!song) {
+    song = "I Saw the Sign";
+  }
+  //   display spotify song requested
+  spotify.search({ type: "track", query: song }, function(err, data) {
+    if (!err) {
+      var songData = data.tracks.items;
+      console.log("\nSong: " + songData[0].name);
+      console.log("Artist: " + songData[0].artists[0].name);
+      console.log("Album: " + songData[0].album.name);
+      console.log("URL: " + songData[0].preview_url + "\n");
     } else {
-      console.log(data);
+      return console.log("Error occurred: " + err);
+    }
+  });
+}
+
+//   var spotify = new Spotify({
+//     id: keys.spotify.id,
+//     secret: keys.spotify.secret,
+//   });
+//   spotify.search({ type: "track", query: "dancing in the moonlight" }, function(
+//     err,
+//     data
+//   ) {
+//     if (err) {
+//       logOutput.error(err);
+//       return;
+//     }
+//     console.log(data);
+//   });
+// }
+
+function movieThis() {
+  // Create an empty variable for holding the movie name
+  var movieName = searchTerm;
+
+  if (!movieName) {
+    movieName = "Mr. Nobody";
+  }
+  //replace spaces with + for the queryURL
+  movieName = movieName.split(" ").join("+");
+
+  // Then run a request to the OMDB API with the movie specified
+  var queryUrl =
+    "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&apikey=trilogy";
+
+  request(queryUrl, function(error, response, body) {
+    // If the request is successful
+    if (!error && response.statusCode === 200) {
+      console.log(
+        JSON.parse(body).Title +
+          "\nRelease year: " +
+          JSON.parse(body).Year +
+          "\nIMDB rating: " +
+          JSON.parse(body).Ratings[0].Value +
+          "\nRotten Tomato rating: " +
+          JSON.parse(body).Ratings[1].Value +
+          "\nCountry Produced in: " +
+          JSON.parse(body).Country +
+          "\nLanguage: " +
+          JSON.parse(body).Language +
+          "\n\n" +
+          JSON.parse(body).Plot +
+          "\n\nActors: " +
+          JSON.parse(body).Actors
+      );
     }
   });
 }
