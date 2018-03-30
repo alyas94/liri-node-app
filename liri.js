@@ -1,9 +1,11 @@
+//all required statements
 require("dotenv").config();
 var keys = require("./keys.js");
 var Twitter = require("twitter");
 var Spotify = require("node-spotify-api");
 var request = require("request");
 var fs = require("fs");
+/*=============================================*/
 
 var liriCommand = process.argv[2]; //"my-tweets", "movie-this" etc
 var searchTerm = ""; //holds song/twitter username/movie etc
@@ -16,7 +18,7 @@ for (var i = 3; i < process.argv.length; i++) {
     searchTerm += process.argv[i];
   }
 }
-
+//switch to do what command user entered.
 switch (liriCommand) {
   case "my-tweets":
     myTweets();
@@ -49,6 +51,7 @@ switch (liriCommand) {
 }
 
 function myTweets() {
+  //if they dont enter a username, defaults to Jesus
   if (!searchTerm) {
     var username = "jesus";
   } else {
@@ -80,12 +83,12 @@ function myTweets() {
 }
 
 function spotifyThisSong() {
-  var spotifyKeys = keys.spotify; //these vars are only needed here
-  var spotify = new Spotify(spotifyKeys);
+  //id and secret for spotify
+  var spotify = new Spotify(keys.spotify);
 
   song = searchTerm;
   if (!song) {
-    song = "I Saw the Sign";
+    song = "The Sign";
   }
   //   display spotify song requested
   spotify.search({ type: "track", query: song }, function(err, data) {
@@ -101,65 +104,66 @@ function spotifyThisSong() {
   });
 }
 
-//   var spotify = new Spotify({
-//     id: keys.spotify.id,
-//     secret: keys.spotify.secret,
-//   });
-//   spotify.search({ type: "track", query: "dancing in the moonlight" }, function(
-//     err,
-//     data
-//   ) {
-//     if (err) {
-//       logOutput.error(err);
-//       return;
-//     }
-//     console.log(data);
-//   });
-// }
-
 function movieThis() {
-  // Create an empty variable for holding the movie name
+  //Variable holds movie name from the search user entered.
   var movieName = searchTerm;
-
+  //if no movie was entered, defaults to Mr. Nobody
   if (!movieName) {
     movieName = "Mr. Nobody";
   }
   //replace spaces with + for the queryURL
   movieName = movieName.split(" ").join("+");
 
-  // Then run a request to the OMDB API with the movie specified
   var queryUrl =
     "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&apikey=trilogy";
 
   request(queryUrl, function(error, response, body) {
     // If the request is successful
     if (!error && response.statusCode === 200) {
+      body = JSON.parse(body);
       console.log(
-        JSON.parse(body).Title +
+        body.Title +
           "\nRelease year: " +
-          JSON.parse(body).Year +
+          body.Year +
           "\nIMDB rating: " +
-          JSON.parse(body).Ratings[0].Value +
+          body.Ratings[0].Value +
           "\nRotten Tomato rating: " +
-          JSON.parse(body).Ratings[1].Value +
+          body.Ratings[1].Value +
           "\nCountry Produced in: " +
-          JSON.parse(body).Country +
+          body.Country +
           "\nLanguage: " +
-          JSON.parse(body).Language +
+          body.Language +
           "\n\n" +
-          JSON.parse(body).Plot +
+          body.Plot +
           "\n\nActors: " +
-          JSON.parse(body).Actors
+          body.Actors
       );
     }
   });
 }
 
 function doWhatItSays() {
+  //ready random.txt file to use for a command
   fs.readFile("random.txt", "utf8", function(error, data) {
     if (!error) {
-      doWhatItSaysResults = data.split(",");
-      spotifyThisSong(doWhatItSaysResults[0], doWhatItSaysResults[1]);
+      txtResults = data.split(",");
+
+      liriCommand = txtResults[0]; //what the command is
+
+      searchTerm = txtResults[1]; //what they want to search
+
+      //new switch to do whatever command was in the txt file
+      switch (liriCommand) {
+        case "my-tweets":
+          myTweets();
+          break;
+        case "spotify-this-song":
+          spotifyThisSong();
+          break;
+        case "movie-this":
+          movieThis();
+          break;
+      }
     } else {
       console.log("Error occurred" + error);
     }
